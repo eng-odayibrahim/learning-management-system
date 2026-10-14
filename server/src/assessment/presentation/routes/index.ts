@@ -65,10 +65,9 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<v
 // ── Candidate Gemini Models with automatic fallback ──────────────────────────
 const CANDIDATE_MODELS = [
   'gemini-3.1-flash-lite',
-  'gemini-2.5-flash-lite',
-  'gemini-flash-latest',
-  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
+  'gemini-flash-latest',
 ]
 
 // ── Multer: store quiz paper in memory (PDF / Image, max 20 MB) ───────────
@@ -77,10 +76,10 @@ const upload = multer({
   limits: {
     fileSize: 20 * 1024 * 1024,
     files: 1,
-    fields: 0,
-    parts: 1,
-    fieldNameSize: 64,
-    headerPairs: 50,
+    fields: 10,
+    parts: 20,
+    fieldNameSize: 100,
+    headerPairs: 100,
   },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase()

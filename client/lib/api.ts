@@ -61,7 +61,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   if (!res.ok || (json && !json.success)) {
-    const errorMsg = json?.error?.message || `حدث خطأ: ${res.statusText || res.status}`
+    const errorMsg = (json as any)?.message || json?.error?.message || `حدث خطأ: ${res.statusText || res.status}`
     throw new ApiError(errorMsg, res.status, json?.error?.code)
   }
 
@@ -381,7 +381,7 @@ export const api = {
       body:    formData,
     })
     const json = await res.json()
-    if (!res.ok || !json.success) throw new Error(json?.error?.message || 'فشل استخراج الأسئلة')
+    if (!res.ok || !json.success) throw new Error((json as any)?.message || json?.error?.message || 'فشل استخراج الأسئلة')
     return json.data as Omit<Question, '_id'>[]
   },
 

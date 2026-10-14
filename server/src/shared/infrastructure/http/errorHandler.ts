@@ -7,11 +7,21 @@ interface ErrorBody {
   success: false
   code: string
   message: string
+  error?: {
+    code: string
+    message: string
+  }
   errors?: unknown
 }
 
 function send(res: Response, status: number, body: ErrorBody): void {
-  res.status(status).json(body)
+  res.status(status).json({
+    ...body,
+    error: {
+      code: body.code,
+      message: body.message,
+    },
+  })
 }
 
 const MULTER_CODES: Record<string, { status: number; code: string; message: string }> = {
@@ -44,6 +54,7 @@ export function errorHandler(
   }
 
   if (err instanceof MulterError) {
+    console.warn(`[MulterError] ${err.code}: ${err.message}`)
     const mapped = MULTER_CODES[err.code] ?? { status: 400, code: 'UPLOAD_INVALID', message: 'Invalid upload' }
     send(res, mapped.status, { success: false, code: mapped.code, message: mapped.message })
     return

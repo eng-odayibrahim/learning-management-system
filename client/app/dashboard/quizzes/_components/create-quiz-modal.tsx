@@ -213,6 +213,7 @@ export function CreateQuizModal({
 
     try {
       const allExtracted: DraftQuestion[] = []
+      const fileErrors: string[] = []
 
       // Extract from all files sequentially
       for (let i = 0; i < files.length; i++) {
@@ -221,13 +222,17 @@ export function CreateQuizModal({
           const extracted = await api.extractQuizFromFile(file)
           allExtracted.push(...extracted)
         } catch (err: any) {
-          toast.error(`خطأ في استخراج ملف ${file.name}: ${err.message}`)
+          const msg = err.message || 'فشل استخراج الأسئلة'
+          fileErrors.push(`${file.name}: ${msg}`)
+          toast.error(`خطأ في استخراج ملف ${file.name}: ${msg}`)
         }
       }
 
       if (allExtracted.length > 0) {
         setQuestions((prev) => [...prev, ...allExtracted])
         toast.success(`✅ تم استخراج ${allExtracted.length} سؤال بنجاح`)
+      } else if (fileErrors.length > 0) {
+        setExtractError(fileErrors.join(' | '))
       } else {
         setExtractError('لم يتم العثور على أسئلة صالحة في الملفات المرفوعة.')
       }

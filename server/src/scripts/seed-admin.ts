@@ -24,7 +24,7 @@ async function seedAdmin() {
       username,
       email,
       password,
-      fullName: 'System Admin',
+      fullName: 'حسن بابا',
       role: 'admin',
       phones: [{ number: '0000000000', relation: 'personal' }],
       isActive: true,

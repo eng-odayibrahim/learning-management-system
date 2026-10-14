@@ -9,6 +9,8 @@
     "type-check": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.js",
     "migrate:academic": "tsx src/scripts/migrate-academic-classifications.ts",
+    "seed:admin": "node dist/scripts/seed-admin.js",
+    "seed:admin:dev": "tsx src/scripts/seed-admin.ts",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {

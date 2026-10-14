@@ -1,0 +1,22 @@
+# =============================================================================
+# Development Dockerfile for LMS API
+# Uses tsx watch with Hot Module Replacement (HMR) & live reloading
+# =============================================================================
+FROM node:20-slim
+
+# Install FFmpeg for video processing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+
+COPY . .
+
+EXPOSE 4000
+
+CMD ["npm", "run", "dev"]

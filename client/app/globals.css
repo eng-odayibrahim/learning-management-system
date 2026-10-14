@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  
+  --color-pastel-red: var(--pastel-red);
+  --color-pastel-red-fg: var(--pastel-red-fg);
+  --color-pastel-blue: var(--pastel-blue);
+  --color-pastel-blue-fg: var(--pastel-blue-fg);
+  --color-pastel-green: var(--pastel-green);
+  --color-pastel-green-fg: var(--pastel-green-fg);
+  --color-pastel-yellow: var(--pastel-yellow);
+  --color-pastel-yellow-fg: var(--pastel-yellow-fg);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Warm Neutral Palette, Turquoise Identity */
+  --background: #FBFBFA;
+  /* --background: oklch(96.7% 0.001 286.375);  */
+  --foreground: #111111;
+  
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  
+  --primary: #0D9488;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #F1F8F7;
+  --secondary-foreground: #111111;
+  
+  --muted: #F1F8F7;
+  --muted-foreground: #71827F;
+  
+  --accent: #E3F5F3;
+  --accent-foreground: #0B6E64;
+  
+  --destructive: #9F2F2D;
+  --destructive-foreground: #FFFFFF;
+  
+  --border: #E7EFEE;
+  --input: #E7EFEE;
+  --ring: #0D9488;
+  
+  /* Pastel Accents (semantic, independent of brand hue) */
+  --pastel-red: #FDEBEC;
+  --pastel-red-fg: #9F2F2D;
+  
+  --pastel-blue: #E1F3FE;
+  --pastel-blue-fg: #1F6C9F;
+  
+  --pastel-green: #EDF3EC;
+  --pastel-green-fg: #346538;
+  
+  --pastel-yellow: #FBF3DB;
+  --pastel-yellow-fg: #956400;
+
+  /* Brand turquoise scale, available for gradients / glass accents on later pages */
+  --turquoise-50: #EFFBFA;
+  --turquoise-100: #D6F3F0;
+  --turquoise-300: #7DD9D0;
+  --turquoise-500: #14B8A6;
+  --turquoise-600: #0D9488;
+  --turquoise-700: #0A7A70;
+  --turquoise-900: #0B4A44;
+
+  --radius: 0.75rem;
+
+  --sidebar: #FBFBFA;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #0D9488;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E3F5F3;
+  --sidebar-accent-foreground: #0B6E64;
+  --sidebar-border: #E7EFEE;
+  --sidebar-ring: #0D9488;
+}
+
+.dark {
+  --background: #111111;
+  --foreground: #FBFBFA;
+  
+  --card: #1A1A1A;
+  --card-foreground: #FBFBFA;
+  
+  --popover: #1A1A1A;
+  --popover-foreground: #FBFBFA;
+  
+  --primary: #2DD4C7;
+  --primary-foreground: #0B1F1D;
+  
+  --secondary: #17211F;
+  --secondary-foreground: #FBFBFA;
+  
+  --muted: #17211F;
+  --muted-foreground: #9AACA9;
+  
+  --accent: #1C302C;
+  --accent-foreground: #5EEAE0;
+  
+  --destructive: #FDEBEC;
+  --destructive-foreground: #9F2F2D;
+  
+  --border: #2A3634;
+  --input: #2A3634;
+  --ring: #2DD4C7;
+  
+  --pastel-red: #3A1D1D;
+  --pastel-red-fg: #FCA5A5;
+  
+  --pastel-blue: #1E3A5F;
+  --pastel-blue-fg: #93C5FD;
+  
+  --pastel-green: #1C3F2B;
+  --pastel-green-fg: #86EFAC;
+  
+  --pastel-yellow: #4A3B1C;
+  --pastel-yellow-fg: #FDE047;
+
+  --turquoise-50: #0B1F1D;
+  --turquoise-100: #0F2C29;
+  --turquoise-300: #1C5B54;
+  --turquoise-500: #2DD4C7;
+  --turquoise-600: #5EEAE0;
+  --turquoise-700: #8FF2EA;
+  --turquoise-900: #D6F3F0;
+
+  --sidebar: #111111;
+  --sidebar-foreground: #FBFBFA;
+  --sidebar-primary: #2DD4C7;
+  --sidebar-primary-foreground: #0B1F1D;
+  --sidebar-accent: #1C302C;
+  --sidebar-accent-foreground: #5EEAE0;
+  --sidebar-border: #2A3634;
+  --sidebar-ring: #2DD4C7;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Cairo", sans-serif;
+  }
+  html {
+    @apply font-sans scroll-smooth;
+  }
+  
+  /* Remove Tailwind's default heavy box shadows in favor of minimalist UI */
+  .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+  }
+  
+  .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl, .dark .shadow-2xl {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+  }
+}
+
+/* ── Mobile menu overlay ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile menu overlay */
+.mobile-menu-overlay {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.mobile-menu-drawer {
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── GSAP-managed elements: start invisible so there's no flash before GSAP runs ── */
+.gsap-reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  will-change: opacity, transform;
+}

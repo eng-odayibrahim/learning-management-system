@@ -1,0 +1,169 @@
+# =============================================================================
+# Zero-egress LMS — Docker Compose (Development Mode)
+# Services: api (Node/Express + FFmpeg), client (Next.js), mongo, redis
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # API — Express + FFmpeg transcoder (tsx watch with HMR)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    container_name: lms-api
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4000:4000'
+    env_file:
+      - ./server/.env
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      CHOKIDAR_USEPOLLING: 'true'
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_URI: mongodb://${MONGO_USER:?set MONGO_USER}:${MONGO_PASSWORD:?set MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-lmsdb}?authSource=admin
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}@rabbitmq:5672
+
+    # Mount local code for live reload (HMR) & persist transcoded files
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - video_uploads:/tmp/video-uploads
+      - hls_transcodes:/tmp/hls-transcodes
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - lms-network
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Client — Next.js frontend (next dev with fast HMR)
+  # ---------------------------------------------------------------------------
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    container_name: lms-client
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    env_file:
+      - ./client/.env
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      # NEXT_PUBLIC_* variables are baked into the browser JS bundle at build time.
+      # The browser cannot reach Docker-internal hostnames (like "api"),
+      # so we use localhost here — the host machine can reach port 4000 via the
+      # "ports: 4000:4000" mapping defined in the api service.
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      INTERNAL_API_URL: http://api:4000
+      WATCHPACK_POLLING: 'true'
+      CHOKIDAR_USEPOLLING: 'true'
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - client_next_cache:/app/.next
+    depends_on:
+      - api
+    networks:
+      - lms-network
+
+  # ---------------------------------------------------------------------------
+  # MongoDB
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: lms-mongo
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?set MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?set MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-lmsdb}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - lms-network
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redis — Bull job queues + session cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6379:6379'
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - lms-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ — Video processing message queue with retry
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lms-rabbitmq
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5672:5672'     # AMQP protocol
+      - '127.0.0.1:15672:15672'   # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - lms-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mongo_data:
+  redis_data:
+  rabbitmq_data:
+  video_uploads:
+  hls_transcodes:
+  client_next_cache:    # Next.js / Turbopack build cache (named so it can be pruned easily)
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  lms-network:
+    driver: bridge

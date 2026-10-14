@@ -1,0 +1,19 @@
+# =============================================================================
+# Development Dockerfile for LMS Client
+# Uses next dev with fast live reloading
+# =============================================================================
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+
+COPY . .
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["npm", "run", "dev"]

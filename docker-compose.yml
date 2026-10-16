@@ -1,6 +1,10 @@
 # =============================================================================
-# Zero-egress LMS — Docker Compose (Development Mode)
-# Services: api (Node/Express + FFmpeg), client (Next.js), mongo, redis
+# Zero-egress LMS — Docker Compose (Default / Development Mode)
+#
+# Commands:
+#   Development: docker compose up -d --build
+#                (or: docker compose -f docker-compose.dev.yml up -d --build)
+#   Production:  docker compose -f docker-compose.prod.yml up -d --build
 # =============================================================================
 
 services:
@@ -24,8 +28,6 @@ services:
       CHOKIDAR_USEPOLLING: 'true'
       MONGO_HOST: mongo
       MONGO_PORT: 27017
-
-    # Mount local code for live reload (HMR) & persist transcoded files
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -63,10 +65,6 @@ services:
     command: npm run dev
     environment:
       NODE_ENV: development
-      # NEXT_PUBLIC_* variables are baked into the browser JS bundle at build time.
-      # The browser cannot reach Docker-internal hostnames (like "api"),
-      # so we use localhost here — the host machine can reach port 4000 via the
-      # "ports: 4000:4000" mapping defined in the api service.
       NEXT_PUBLIC_API_URL: http://localhost:4000
       INTERNAL_API_URL: http://api:4000
       WATCHPACK_POLLING: 'true'
@@ -157,7 +155,7 @@ volumes:
   rabbitmq_data:
   video_uploads:
   hls_transcodes:
-  client_next_cache:    # Next.js / Turbopack build cache (named so it can be pruned easily)
+  client_next_cache:
 
 # =============================================================================
 # Networks

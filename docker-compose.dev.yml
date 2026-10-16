@@ -1,0 +1,163 @@
+# =============================================================================
+# Zero-egress LMS — Docker Compose (Development Mode)
+# Services: api (Node/Express + FFmpeg), client (Next.js), mongo, redis, rabbitmq
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d --build
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # API — Express + FFmpeg transcoder (tsx watch with HMR)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    container_name: lms-api-dev
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4000:4000'
+    env_file:
+      - ./server/.env
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      CHOKIDAR_USEPOLLING: 'true'
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - video_uploads_dev:/tmp/video-uploads
+      - hls_transcodes_dev:/tmp/hls-transcodes
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - lms-dev-network
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Client — Next.js frontend (next dev with fast live reloading)
+  # ---------------------------------------------------------------------------
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    container_name: lms-client-dev
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    env_file:
+      - ./client/.env
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      INTERNAL_API_URL: http://api:4000
+      WATCHPACK_POLLING: 'true'
+      CHOKIDAR_USEPOLLING: 'true'
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - client_next_cache_dev:/app/.next
+    depends_on:
+      - api
+    networks:
+      - lms-dev-network
+
+  # ---------------------------------------------------------------------------
+  # MongoDB
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: lms-mongo-dev
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: lms
+      MONGO_INITDB_ROOT_PASSWORD: lms_secret
+      MONGO_INITDB_DATABASE: lmsdb
+    volumes:
+      - mongo_data_dev:/data/db
+    networks:
+      - lms-dev-network
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redis — Bull job queues & cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis-dev
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6379:6379'
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - lms-dev-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ — Video processing message queue with retry
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lms-rabbitmq-dev
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5672:5672'     # AMQP protocol
+      - '127.0.0.1:15672:15672'   # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: lms
+      RABBITMQ_DEFAULT_PASS: lms_secret
+    volumes:
+      - rabbitmq_data_dev:/var/lib/rabbitmq
+    networks:
+      - lms-dev-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mongo_data_dev:
+  redis_data_dev:
+  rabbitmq_data_dev:
+  video_uploads_dev:
+  hls_transcodes_dev:
+  client_next_cache_dev:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  lms-dev-network:
+    driver: bridge

@@ -1,4 +1,15 @@
 node_modules
 .next
+dist
 .git
-npm-debug.log
+.gitignore
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+!.env.example
+.turbo
+coverage
+.DS_Store

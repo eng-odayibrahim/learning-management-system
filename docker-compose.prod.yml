@@ -1,0 +1,208 @@
+# =============================================================================
+# Zero-egress LMS — Docker Compose (Production VPS Deployment)
+#
+# Services:
+#   - nginx:     Reverse proxy on ports 80/443 with 500M body size & SSL support
+#   - client:    Next.js production standalone server (port 3000, internal)
+#   - api:       Express + FFmpeg API & background video worker (port 4000, internal)
+#   - mongo:     MongoDB 7.0 (database, shielded internal network only)
+#   - redis:     Redis 7 (password-protected, cache & queues, internal network only)
+#   - rabbitmq:  RabbitMQ 3 (AMQP internal, management UI on 127.0.0.1 only)
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Nginx — High-Performance Reverse Proxy & SSL Termination
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: lms-nginx-prod
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    depends_on:
+      - client
+      - api
+    networks:
+      - lms-prod-network
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ---------------------------------------------------------------------------
+  # Client — Next.js Frontend (Standalone Production Build)
+  # ---------------------------------------------------------------------------
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER:-}
+    container_name: lms-client-prod
+    restart: always
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: '0.0.0.0'
+      INTERNAL_API_URL: http://api:4000
+    expose:
+      - '3000'
+    depends_on:
+      - api
+    networks:
+      - lms-prod-network
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ---------------------------------------------------------------------------
+  # API — Express + FFmpeg Transcoder & Background Processing
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lms-api-prod
+    restart: always
+    env_file:
+      - ${ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      TRUST_PROXY: '1'
+    expose:
+      - '4000'
+    volumes:
+      - video_uploads_prod:/tmp/video-uploads
+      - hls_transcodes_prod:/tmp/hls-transcodes
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - lms-prod-network
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ---------------------------------------------------------------------------
+  # MongoDB — Primary Database (Shielded inside Docker network)
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: lms-mongo-prod
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-lmsdb}
+    volumes:
+      - mongo_data_prod:/data/db
+    networks:
+      - lms-prod-network
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ---------------------------------------------------------------------------
+  # Redis — Password-Protected Cache & Queues (Internal Only)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis-prod
+    restart: always
+    command: >
+      sh -c 'redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD" --maxmemory 512mb --maxmemory-policy allkeys-lru'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - lms-prod-network
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ — Video Transcoding & Message Queue
+  # AMQP is internal only; management UI is bound only to 127.0.0.1 for SSH tunnels
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lms-rabbitmq-prod
+    restart: always
+    ports:
+      - '127.0.0.1:15672:15672'   # Accessible only locally on VPS or via SSH tunnel
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data_prod:/var/lib/rabbitmq
+    networks:
+      - lms-prod-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+# =============================================================================
+# Production Volumes (Persistent on VPS host storage)
+# =============================================================================
+volumes:
+  mongo_data_prod:
+  redis_data_prod:
+  rabbitmq_data_prod:
+  video_uploads_prod:
+  hls_transcodes_prod:
+  certbot_conf:
+  certbot_www:
+
+# =============================================================================
+# Isolated Production Network
+# =============================================================================
+networks:
+  lms-prod-network:
+    driver: bridge

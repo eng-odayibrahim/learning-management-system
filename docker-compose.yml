@@ -82,7 +82,7 @@ services:
   # MongoDB
   # ---------------------------------------------------------------------------
   mongo:
-    image: mongo:7.0
+    image: mongo:4.4
     container_name: lms-mongo
     restart: unless-stopped
     ports:
@@ -96,7 +96,7 @@ services:
     networks:
       - lms-network
     healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "mongo --eval \"db.adminCommand('ping')\" || mongosh --eval \"db.adminCommand('ping')\""]
       interval: 15s
       timeout: 20s
       retries: 5

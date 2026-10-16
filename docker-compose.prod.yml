@@ -110,7 +110,7 @@ services:
   # MongoDB — Primary Database (Shielded inside Docker network)
   # ---------------------------------------------------------------------------
   mongo:
-    image: mongo:7.0
+    image: mongo:4.4
     container_name: lms-mongo-prod
     restart: always
     environment:
@@ -122,11 +122,11 @@ services:
     networks:
       - lms-prod-network
     healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      test: ['CMD', 'mongo', '--eval', "db.adminCommand('ping')"]
       interval: 15s
       timeout: 20s
       retries: 5
-      start_period: 30s
+      start_period: 40s
     logging:
       driver: 'json-file'
       options:
@@ -149,7 +149,7 @@ services:
     networks:
       - lms-prod-network
     healthcheck:
-      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG']
+      test: [ 'CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG' ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -168,7 +168,7 @@ services:
     container_name: lms-rabbitmq-prod
     restart: always
     ports:
-      - '127.0.0.1:15672:15672'   # Accessible only locally on VPS or via SSH tunnel
+      - '127.0.0.1:15672:15672' # Accessible only locally on VPS or via SSH tunnel
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
@@ -177,7 +177,7 @@ services:
     networks:
       - lms-prod-network
     healthcheck:
-      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      test: [ 'CMD', 'rabbitmq-diagnostics', '-q', 'ping' ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -200,9 +200,9 @@ volumes:
   certbot_conf:
   certbot_www:
 
-# =============================================================================
-# Isolated Production Network
-# =============================================================================
+    # =============================================================================
+    # Isolated Production Network
+    # =============================================================================
 networks:
   lms-prod-network:
     driver: bridge
